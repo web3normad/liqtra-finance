@@ -1,9 +1,11 @@
 import dotenv from 'dotenv';
 
-dotenv.config({ path: '../../.env' });
+
+dotenv.config({ path: '../.env' });
 
 const IS_TESTNET = process.env.NODE_ENV !== 'production';
 
+console.log(IS_TESTNET)
 export const CONFIG = {
   // Blockchain
   RPC_URL: IS_TESTNET 
@@ -106,6 +108,7 @@ if (!CONFIG.AGENT_PRIVATE_KEY) {
   throw new Error('AGENT_PRIVATE_KEY is required');
 }
 
+console.log("API KEY", CONFIG.OPENAI_API_KEY)
 if (!CONFIG.OPENAI_API_KEY) {
   throw new Error('OPENAI_API_KEY is required');
 }
