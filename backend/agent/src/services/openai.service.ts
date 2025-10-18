@@ -1,3 +1,6 @@
+// backend/agent/src/services/openai.service.ts
+// FIXED VERSION - No TypeScript errors
+
 import OpenAI from 'openai';
 import { CONFIG } from '../config/constants';
 import { PortfolioContext, AgentDecision } from '../types';
@@ -15,64 +18,71 @@ export class OpenAIService {
   }
 
   async makeDecision(context: PortfolioContext): Promise<AgentDecision> {
-    try {
-      const tools: OpenAI.Chat.ChatCompletionTool[] = [
-        {
-          type: 'function',
-          function: {
-            name: 'rebalance_portfolio',
-            description: 'Move funds from one protocol to another for better yield',
-            parameters: {
-              type: 'object',
-              properties: {
-                from_protocol: {
-                  type: 'string',
-                  enum: ['aave', 'compound', 'moonwell'],
-                  description: 'Protocol to withdraw from',
-                },
-                to_protocol: {
-                  type: 'string',
-                  enum: ['aave', 'compound', 'moonwell'],
-                  description: 'Protocol to deposit to',
-                },
-                amount: {
-                  type: 'number',
-                  description: 'Amount in USDC (e.g., 1000.50)',
-                },
-                reason: {
-                  type: 'string',
-                  description: 'Explanation for this decision',
-                },
-              },
-              required: ['from_protocol', 'to_protocol', 'amount', 'reason'],
-            },
-          },
-        },
-        {
-          type: 'function',
-          function: {
-            name: 'do_nothing',
-            description: 'Keep current allocation, no action needed',
-            parameters: {
-              type: 'object',
-              properties: {
-                reason: {
-                  type: 'string',
-                  description: 'Why no action is needed',
-                },
-              },
-              required: ['reason'],
-            },
-          },
-        },
-      ];
+    const maxRetries = 3;
+    let lastError: Error | null = null;
 
-      const systemPrompt = `You are Floquidity, an AI DeFi portfolio manager.
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        logger.debug(`OpenAI request attempt ${attempt}/${maxRetries}`, {
+          user: context.user.wallet_address
+        });
+
+        const tools: OpenAI.Chat.ChatCompletionTool[] = [
+          {
+            type: 'function',
+            function: {
+              name: 'rebalance_portfolio',
+              description: 'Move funds from one protocol to another for better yield',
+              parameters: {
+                type: 'object',
+                properties: {
+                  from_protocol: {
+                    type: 'string',
+                    enum: ['aave', 'compound', 'moonwell'],
+                    description: 'Protocol to withdraw from',
+                  },
+                  to_protocol: {
+                    type: 'string',
+                    enum: ['aave', 'compound', 'moonwell'],
+                    description: 'Protocol to deposit to',
+                  },
+                  amount: {
+                    type: 'number',
+                    description: 'Amount in USDC (e.g., 1000.50)',
+                  },
+                  reason: {
+                    type: 'string',
+                    description: 'Explanation for this decision',
+                  },
+                },
+                required: ['from_protocol', 'to_protocol', 'amount', 'reason'],
+              },
+            },
+          },
+          {
+            type: 'function',
+            function: {
+              name: 'do_nothing',
+              description: 'Keep current allocation, no action needed',
+              parameters: {
+                type: 'object',
+                properties: {
+                  reason: {
+                    type: 'string',
+                    description: 'Why no action is needed',
+                  },
+                },
+                required: ['reason'],
+              },
+            },
+          },
+        ];
+
+        const systemPrompt = `You are Floquidity, an AI DeFi portfolio manager.
 
 User's risk level: ${context.user.risk_level}
 
 DECISION RULES:
-${CONFIG.MIN_APY_DIFFERENCE}% minimum APY difference to rebalance
 - Only move if APY difference > ${CONFIG.MIN_APY_DIFFERENCE}%
 - Gas costs must be < ${CONFIG.MAX_GAS_PERCENTAGE}% of amount moved
 - Conservative users: Only use Aave and Compound (highest safety scores)
@@ -84,7 +94,7 @@ SAFETY RULES:
 - Always explain your reasoning clearly
 - Consider gas costs in your decision`;
 
-      const userPrompt = `Current portfolio state:
+        const userPrompt = `Current portfolio state:
       
 Vault Balance: $${(Number(context.balances.vault) / 1e6).toFixed(2)} USDC
 Current Allocations:
@@ -96,53 +106,86 @@ Gas Price: ${Number(context.gas_price) / 1e9} gwei
 
 What action should I take?`;
 
-      logger.debug('Sending request to OpenAI', { user: context.user.wallet_address });
+        const response = await this.client.chat.completions.create({
+          model: 'gpt-4',
+          messages: [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: userPrompt },
+          ],
+          tools,
+          tool_choice: 'auto',
+        });
 
-      const response = await this.client.chat.completions.create({
-        model: 'gpt-4',
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: userPrompt },
-        ],
-        tools,
-        tool_choice: 'auto',
-      });
+        const message = response.choices[0].message;
 
-      const message = response.choices[0].message;
+        // Type guard to check if tool_calls exists and has items
+        if (!message.tool_calls || message.tool_calls.length === 0) {
+          logger.warn('AI did not suggest any action');
+          return {
+            action: 'do_nothing',
+            reason: 'AI did not suggest any action',
+          };
+        }
 
-      if (!message.tool_calls || message.tool_calls.length === 0) {
+        const toolCall = message.tool_calls[0];
+
+        // ✅ FIX: Type-safe way to access function
+        if (toolCall.type !== 'function') {
+          logger.warn('Tool call is not a function type');
+          return {
+            action: 'do_nothing',
+            reason: 'Invalid tool call type',
+          };
+        }
+
+        // Now TypeScript knows toolCall has 'function' property
+        const functionName = toolCall.function.name;
+        const args = JSON.parse(toolCall.function.arguments);
+
+        logger.info('AI Decision received', { 
+          function: functionName, 
+          args,
+          user: context.user.wallet_address
+        });
+
+        if (functionName === 'rebalance_portfolio') {
+          return {
+            action: 'rebalance',
+            from_protocol: args.from_protocol,
+            to_protocol: args.to_protocol,
+            amount: BigInt(Math.floor(args.amount * 1e6)), // Convert to USDC decimals
+            reason: args.reason,
+          };
+        }
+
         return {
           action: 'do_nothing',
-          reason: 'AI did not suggest any action',
+          reason: args.reason || 'Current allocation is optimal',
         };
+
+      } catch (error: any) {
+        lastError = error;
+        logger.warn(`OpenAI attempt ${attempt} failed`, { 
+          error: error.message,
+          code: error.code
+        });
+        
+        if (attempt < maxRetries) {
+          // Exponential backoff: 2s, 4s, 8s
+          const delay = Math.pow(2, attempt) * 1000;
+          logger.info(`Retrying in ${delay}ms...`);
+          await new Promise(resolve => setTimeout(resolve, delay));
+        }
       }
-
-      const toolCall = message.tool_calls[0];
-      const functionName = 'function' in toolCall ? toolCall.function.name : 'unknown_function';
-      const args = 'arguments' in toolCall ? JSON.parse(toolCall.arguments as string) : {};
-
-      logger.info('AI Decision', { function: functionName, args });
-
-      if (functionName === 'rebalance_portfolio') {
-        return {
-          action: 'rebalance',
-          from_protocol: args.from_protocol,
-          to_protocol: args.to_protocol,
-          amount: BigInt(Math.floor(args.amount * 1e6)), // Convert to USDC decimals
-          reason: args.reason,
-        };
-      }
-
-      return {
-        action: 'do_nothing',
-        reason: args.reason || 'Current allocation is optimal',
-      };
-    } catch (error) {
-      logger.error('OpenAI API error', error);
-      return {
-        action: 'do_nothing',
-        reason: 'Error communicating with AI',
-      };
     }
+
+    logger.error('All OpenAI retry attempts failed', { 
+      error: lastError?.message 
+    });
+    
+    return {
+      action: 'do_nothing',
+      reason: 'Failed to get AI decision after multiple retries',
+    };
   }
 }
