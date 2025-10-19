@@ -1,0 +1,40 @@
+# Environment variables - NEVER commit these!
+.env
+.env.local
+.env.*.local
+*.env
+
+# Private keys and secrets
+contracts/.env
+backend/.env
+frontend/.env.local
+
+# Node modules
+node_modules/
+**/node_modules/
+
+# Build outputs
+dist/
+build/
+out/
+.next/
+*.log
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Foundry
+cache/
+out/
+broadcast/
+
+# Dependencies
+lib/
