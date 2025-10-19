@@ -3,9 +3,11 @@
 ## ✅ What Was Fixed
 
 ### The Problem
+
 GitHub's push protection detected sensitive information (OpenAI API key, private keys) in your `contracts/.env` file that was accidentally committed to the repository.
 
 ### The Solution
+
 1. **Removed `.env` from git tracking**: `git rm --cached contracts/.env`
 2. **Created root `.gitignore`**: Prevents future accidental commits of sensitive files
 3. **Updated `.env.example`**: Provides a template without real secrets
@@ -15,16 +17,19 @@ GitHub's push protection detected sensitive information (OpenAI API key, private
 ## 📋 Files Changed
 
 ### Created/Updated Files:
+
 - ✅ `.gitignore` - Root-level gitignore with comprehensive rules
 - ✅ `contracts/.env.example` - Safe template for environment variables
 - ✅ `README.md` - Comprehensive project documentation
 
 ### Removed from Git:
+
 - 🗑️ `contracts/.env` - Now local-only, never committed again
 
 ## 🔐 Security Best Practices
 
 ### 1. **NEVER Commit These Files:**
+
 ```
 .env
 .env.local
@@ -36,6 +41,7 @@ GitHub's push protection detected sensitive information (OpenAI API key, private
 ```
 
 ### 2. **Always Use `.env.example`:**
+
 ```bash
 # Good - Template with no real secrets
 OPENAI_API_KEY=your_openai_api_key_here
@@ -45,6 +51,7 @@ OPENAI_API_KEY=sk-proj-xg-A7OszNT09S5c9...
 ```
 
 ### 3. **Check Before Committing:**
+
 ```bash
 # Always review what you're committing
 git status
@@ -55,6 +62,7 @@ git diff | grep -i "api_key\|secret\|password\|private"
 ```
 
 ### 4. **Use Environment Variables Properly:**
+
 ```bash
 # Copy template to create your local .env
 cp contracts/.env.example contracts/.env
@@ -68,10 +76,12 @@ nano contracts/.env
 Since your OpenAI API key was exposed (even briefly), you should:
 
 1. **Revoke the old key:**
+
    - Go to https://platform.openai.com/api-keys
    - Delete the exposed key: `sk-proj-xg-A7OszNT09S5c9...`
 
 2. **Generate a new key:**
+
    - Create a new API key in OpenAI dashboard
    - Update your local `.env` file with the new key
 
@@ -93,17 +103,20 @@ Protection: ✅ .gitignore in place
 ### Setting Up Your Local Environment:
 
 1. **Create your local `.env` file:**
+
 ```bash
 cp contracts/.env.example contracts/.env
 ```
 
 2. **Add your real API keys to the LOCAL `.env` file:**
+
 ```bash
 # Edit this file (it's in .gitignore so it won't be committed)
 nano contracts/.env
 ```
 
 3. **Verify .gitignore is working:**
+
 ```bash
 git status
 # .env should NOT appear in untracked files
@@ -128,6 +141,7 @@ git push origin dev
 ## 🛡️ Prevention Tools
 
 ### Install git-secrets (Recommended):
+
 ```bash
 # Install git-secrets
 brew install git-secrets  # macOS
@@ -140,7 +154,9 @@ git secrets --register-aws
 ```
 
 ### Pre-commit Hook (Manual):
+
 Create `.git/hooks/pre-commit`:
+
 ```bash
 #!/bin/sh
 if git diff --cached | grep -E "PRIVATE_KEY|API_KEY|SECRET" | grep -v "example"; then
@@ -178,6 +194,7 @@ chmod +x .git/hooks/pre-commit
 ## 🎯 Current Status: SECURE ✅
 
 Your repository is now clean and secure:
+
 - ✅ No secrets in git history
 - ✅ `.gitignore` protecting sensitive files
 - ✅ `.env.example` for documentation

@@ -4,11 +4,13 @@ import { useState, useEffect } from "react";
 import { Card } from "@/components/common/Card";
 import { Badge } from "@/components/common/Badge";
 import { Button } from "@/components/common/Button";
+import { Modal } from "@/components/common/Modal";
 import { Tabs } from "@/components/common/Tabs";
 import { ActivePositions } from "@/components/dashboard/ActivePositions";
 import { Position } from "@/types/portfolio.types";
 import { useAIAgent } from "@/hooks/useAIAgent";
 import { useWallet } from "@/hooks/useWallet";
+import { useAutomation } from "@/hooks/useAutomation";
 import { getProtocolLogo } from "@/lib/utils/logos";
 import toast from "react-hot-toast";
 import {
@@ -22,10 +24,17 @@ import {
   WarningCircle,
 } from "@phosphor-icons/react";
 import { TrendIndicator } from "@/components/charts/TrendIndicator";
-import { useWriteContract, useWaitForTransactionReceipt } from "wagmi";
-import { parseUnits } from "viem";
-import { getVaultAddress } from "@/lib/web3/contracts/addresses";
-import { VAULT_ABI } from "@/lib/web3/contracts/abis";
+import {
+  useWriteContract,
+  useWaitForTransactionReceipt,
+  useReadContract,
+} from "wagmi";
+import { parseUnits, formatUnits } from "viem";
+import {
+  getVaultAddress,
+  getUSDCAddress,
+} from "@/lib/web3/contracts/addresses";
+import { VAULT_ABI, ERC20_ABI } from "@/lib/web3/contracts/abis";
 
 // Mock active positions
 const mockPositions: Position[] = [
@@ -94,9 +103,11 @@ const mockPositions: Position[] = [
 export default function ActiveStakingPage() {
   const [activeTab, setActiveTab] = useState("all");
   const { getPositions, getPortfolioStats } = useAIAgent();
+  const { clearPositions } = useAutomation();
   const { address, chainId } = useWallet();
   const [positions, setPositions] = useState<Position[]>([]);
   const [isEnablingAutoCompound, setIsEnablingAutoCompound] = useState(false);
+  const [isUnstakeModalOpen, setIsUnstakeModalOpen] = useState(false);
 
   // Withdrawal functionality
   const {
@@ -110,6 +121,54 @@ export default function ActiveStakingPage() {
     });
 
   const vaultAddress = chainId ? getVaultAddress(chainId) : undefined;
+  const usdcAddress = chainId ? getUSDCAddress(chainId) : undefined;
+
+  // Get actual vault balance - FIXED: Use getUserBalance instead of balanceOf
+  const { data: vaultBalanceData, refetch: refetchVaultBalance } =
+    useReadContract({
+      address: vaultAddress,
+      abi: VAULT_ABI,
+      functionName: "getUserBalance", // Changed from "balanceOf" to "getUserBalance"
+      args: address ? [address] : undefined,
+      query: {
+        enabled: !!address && !!vaultAddress,
+        refetchInterval: 5000, // Refetch every 5 seconds
+      },
+    });
+
+  const vaultBalance = vaultBalanceData
+    ? parseFloat(formatUnits(vaultBalanceData as bigint, 6))
+    : 0;
+
+  // Debug logging
+  useEffect(() => {
+    console.log("🔍 Active Staking Debug:", {
+      vaultBalanceData,
+      vaultBalanceRaw: vaultBalanceData?.toString(),
+      vaultBalance,
+      vaultBalanceFormatted: vaultBalance.toFixed(6),
+      address,
+      vaultAddress,
+      chainId,
+      positionsCount: positions.length,
+      hasBalance: vaultBalance > 0,
+    });
+
+    // Show warning if vault balance is 0 but we expect funds
+    if (address && vaultAddress && vaultBalance === 0) {
+      console.warn(
+        "⚠️ Vault balance is 0 - check if funds are actually deposited in contract:",
+        vaultAddress
+      );
+    }
+  }, [
+    vaultBalanceData,
+    vaultBalance,
+    address,
+    vaultAddress,
+    chainId,
+    positions.length,
+  ]);
 
   // Load positions from automation
   useEffect(() => {
@@ -120,6 +179,40 @@ export default function ActiveStakingPage() {
 
     const updatePositions = () => {
       const rawPositions = getPositions();
+      console.log("📊 Raw positions from localStorage:", rawPositions);
+
+      // If no positions but we have vault balance, create a single vault position
+      if (rawPositions.length === 0 && vaultBalance > 0) {
+        console.log("✅ Creating vault position with balance:", vaultBalance);
+        const vaultPosition: Position = {
+          id: "vault-main",
+          protocol: "Liqtra Vault",
+          protocolLogo: getProtocolLogo("Aave"),
+          pool: "Main Vault",
+          token: "USDC",
+          tokenLogo: "/assets/icons/usdc.svg",
+          chain: "Base Sepolia",
+          chainLogo: "/eth-logo.svg",
+          amount: vaultBalance,
+          value: vaultBalance,
+          apy: 5.5,
+          earned: 0,
+          earnedUSD: 0,
+          startDate: new Date(),
+          status: "active",
+          risk: "low",
+          autoCompound: true,
+          nextReward: new Date(Date.now() + 24 * 60 * 60 * 1000),
+        };
+        setPositions([vaultPosition]);
+        return;
+      }
+
+      if (rawPositions.length === 0 && vaultBalance === 0) {
+        console.log("❌ No positions and no vault balance");
+        setPositions([]);
+        return;
+      }
 
       // Transform automation positions to Position format with real-time earnings
       const transformedPositions: Position[] = rawPositions.map((pos: any) => {
@@ -161,13 +254,44 @@ export default function ActiveStakingPage() {
     const interval = setInterval(updatePositions, 30000);
 
     return () => clearInterval(interval);
-  }, [address, getPositions]);
+  }, [address, getPositions, vaultBalance]);
 
-  // Calculate stats from real positions
-  const stats = getPortfolioStats();
-  const totalStaked = stats.totalValue;
-  const totalEarned = stats.totalEarnings;
-  const avgAPY = stats.avgApy;
+  // Calculate stats from real vault balance AND positions
+  // Use vault balance as source of truth, but if 0 and we have positions, sum positions (for display)
+  const positionsTotalAmount = positions.reduce(
+    (sum, pos) => sum + pos.amount,
+    0
+  );
+  const totalStaked =
+    vaultBalance > 0
+      ? vaultBalance
+      : positionsTotalAmount > 0
+      ? positionsTotalAmount
+      : 0;
+
+  const totalEarned = positions.reduce((sum, pos) => sum + pos.earned, 0);
+  const avgAPY =
+    positions.length > 0
+      ? positions.reduce((sum, pos) => sum + pos.apy, 0) / positions.length
+      : 0;
+
+  // Log discrepancy if vault balance doesn't match positions
+  useEffect(() => {
+    if (positionsTotalAmount > 0 && vaultBalance === 0) {
+      console.error(
+        "⚠️ MISMATCH: Positions show",
+        positionsTotalAmount,
+        "USDC but vault balance is 0!"
+      );
+      console.error("This means either:");
+      console.error("1. Funds were withdrawn from the vault");
+      console.error("2. localStorage has stale position data");
+      console.error("3. Wrong vault contract address");
+      toast.error("Position data mismatch detected! Check console.", {
+        id: "mismatch",
+      });
+    }
+  }, [positionsTotalAmount, vaultBalance]);
 
   const tabs = [
     { value: "all", label: "All Positions" },
@@ -291,44 +415,45 @@ export default function ActiveStakingPage() {
   };
 
   /**
-   * Unstake all positions
+   * Unstake all positions - Open confirmation modal
    */
-  const handleUnstake = async () => {
-    if (positions.length === 0) {
-      toast.error("No positions to unstake");
-      return;
-    }
+  const handleUnstake = () => {
+    console.log("🔴 Unstake clicked:", {
+      vaultBalance,
+      hasBalance: vaultBalance > 0,
+      address,
+      chainId,
+      vaultAddress,
+    });
 
     if (!address || !chainId || !vaultAddress) {
       toast.error("Please connect your wallet");
       return;
     }
 
-    // Calculate total staked amount (original deposits, not including earnings)
-    const totalStaked = positions.reduce((sum, pos) => sum + pos.amount, 0);
-
-    // Show confirmation
-    if (
-      !confirm(
-        `Are you sure you want to unstake all ${
-          positions.length
-        } positions?\n\nThis will withdraw ${totalStaked.toFixed(
-          2
-        )} USDC from the vault back to your wallet.`
-      )
-    ) {
+    if (!vaultBalance || vaultBalance <= 0) {
+      toast.error(`No funds to unstake. Vault balance: ${vaultBalance} USDC`);
+      console.error("❌ No vault balance found");
       return;
     }
 
+    // Open confirmation modal
+    setIsUnstakeModalOpen(true);
+  };
+  /**
+   * Confirm and execute unstake
+   */
+  const confirmUnstake = async () => {
     try {
+      setIsUnstakeModalOpen(false);
       toast.loading("Initiating withdrawal...", { id: "unstake" });
 
       // Convert amount to wei (USDC has 6 decimals)
-      const amountWei = parseUnits(totalStaked.toFixed(6), 6);
+      const amountWei = parseUnits(vaultBalance.toFixed(6), 6);
 
       // Call vault.withdraw(amount)
       await writeContract({
-        address: vaultAddress,
+        address: vaultAddress!,
         abi: VAULT_ABI,
         functionName: "withdraw",
         args: [amountWei],
@@ -346,12 +471,8 @@ export default function ActiveStakingPage() {
   // Handle successful withdrawal
   useEffect(() => {
     if (isWithdrawSuccess && withdrawHash) {
-      const totalStaked = positions.reduce((sum, pos) => sum + pos.amount, 0);
-
       toast.success(
-        `✅ Successfully unstaked ${totalStaked.toFixed(2)} USDC from ${
-          positions.length
-        } positions!`,
+        `✅ Successfully unstaked ${vaultBalance.toFixed(2)} USDC!`,
         {
           id: "unstake",
           duration: 5000,
@@ -367,7 +488,7 @@ export default function ActiveStakingPage() {
 
       console.log(`Transaction hash: ${withdrawHash}`);
     }
-  }, [isWithdrawSuccess, withdrawHash, address, chainId, positions]);
+  }, [isWithdrawSuccess, withdrawHash, address, chainId, vaultBalance]);
 
   return (
     <div className="space-y-6">
@@ -390,7 +511,11 @@ export default function ActiveStakingPage() {
         <Card>
           <div className="flex items-center justify-between mb-2">
             <span className="text-gray-400 text-sm">Total Staked</span>
-            <CheckCircle size={20} weight="fill" className="text-success" />
+            {vaultBalance > 0 ? (
+              <CheckCircle size={20} weight="fill" className="text-success" />
+            ) : (
+              <WarningCircle size={20} weight="fill" className="text-warning" />
+            )}
           </div>
           <p className="text-2xl font-bold text-white mb-1">
             $
@@ -399,7 +524,11 @@ export default function ActiveStakingPage() {
             })}
           </p>
           <p className="text-sm text-gray-400">
-            {mockPositions.length} positions
+            {positions.length}{" "}
+            {positions.length === 1 ? "position" : "positions"}
+            {vaultBalance === 0 && positionsTotalAmount > 0 && (
+              <span className="text-warning ml-1">(⚠️ Vault: $0)</span>
+            )}
           </p>
         </Card>
 
@@ -640,6 +769,79 @@ export default function ActiveStakingPage() {
           </Button>
         </div>
       </Card>
+
+      {/* Unstake Confirmation Modal */}
+      <Modal
+        isOpen={isUnstakeModalOpen}
+        onClose={() => setIsUnstakeModalOpen(false)}
+        title="Confirm Unstake"
+        size="md"
+      >
+        <div className="space-y-4">
+          <div className="bg-warning/10 border border-warning/20 rounded-lg p-4">
+            <div className="flex items-start gap-3">
+              <WarningCircle
+                size={24}
+                weight="fill"
+                className="text-warning flex-shrink-0 mt-0.5"
+              />
+              <div>
+                <h4 className="font-semibold text-gray-900 dark:text-white mb-1">
+                  Withdraw All Funds
+                </h4>
+                <p className="text-sm text-gray-600 dark:text-gray-400">
+                  Are you sure you want to unstake all your positions?
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-4 space-y-2">
+            <div className="flex justify-between items-center">
+              <span className="text-sm text-gray-600 dark:text-gray-400">
+                Total Amount
+              </span>
+              <span className="font-semibold text-gray-900 dark:text-white">
+                {vaultBalance.toFixed(2)} USDC
+              </span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-sm text-gray-600 dark:text-gray-400">
+                Active Positions
+              </span>
+              <span className="font-semibold text-gray-900 dark:text-white">
+                {positions.length}
+              </span>
+            </div>
+          </div>
+
+          <p className="text-sm text-gray-600 dark:text-gray-400">
+            This will withdraw <strong>{vaultBalance.toFixed(2)} USDC</strong>{" "}
+            from the vault back to your wallet. All your active positions will
+            be closed.
+          </p>
+
+          <div className="flex gap-3 pt-2">
+            <Button
+              variant="secondary"
+              onClick={() => setIsUnstakeModalOpen(false)}
+              className="flex-1"
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="primary"
+              onClick={confirmUnstake}
+              disabled={isWithdrawing || isWithdrawConfirming}
+              className="flex-1"
+            >
+              {isWithdrawing || isWithdrawConfirming
+                ? "Processing..."
+                : "Confirm Unstake"}
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }

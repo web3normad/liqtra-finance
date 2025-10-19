@@ -55,27 +55,27 @@ export function Header() {
   };
 
   return (
-    <header className="h-20 bg-white dark:bg-card border-b border-gray-200 dark:border-gray-700 px-6 flex items-center justify-between sticky top-0 z-10 backdrop-blur-sm bg-white/80 dark:bg-card/80">
+    <header className="h-20 bg-white dark:bg-card border-b border-gray-200 dark:border-gray-700 px-4 lg:px-6 flex items-center justify-between sticky top-0 z-10 backdrop-blur-sm bg-white/80 dark:bg-card/80">
       {/* Left Section */}
-      <div className="flex items-center space-x-4 flex-1">
-        <div className="relative max-w-md w-full">
+      <div className="flex items-center space-x-2 lg:space-x-4 flex-1 min-w-0">
+        <div className="relative max-w-[200px] lg:max-w-xs w-full">
           <MagnifyingGlass
             size={20}
-            className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 dark:text-gray-400"
+            className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 dark:text-gray-400"
           />
           <input
             type="text"
-            placeholder="Search protocols, pools..."
-            className="w-full bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-md pl-12 pr-4 py-3 text-sm text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-green/50 focus:border-transparent transition-all"
+            placeholder="Search protocols..."
+            className="w-full bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-md pl-10 pr-3 py-2.5 text-sm text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-green/50 focus:border-transparent transition-all"
           />
         </div>
       </div>
 
       {/* Right Section */}
-      <div className="flex items-center space-x-3">
+      <div className="flex items-center space-x-2 lg:space-x-4 flex-shrink-0 ml-4">
         {/* Auto-Invest Toggle */}
         {isConnected && (
-          <div className="flex items-center gap-2 px-3 py-2 rounded-md bg-gray-100 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700">
+          <div className="hidden xl:flex items-center gap-2 px-3 py-2 rounded-md bg-gray-100 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700">
             <Lightning
               size={18}
               weight={isAutoInvesting ? "fill" : "regular"}
@@ -106,6 +106,27 @@ export function Header() {
               />
             </button>
           </div>
+        )}
+
+        {/* Compact Auto-Invest Toggle for medium screens */}
+        {isConnected && (
+          <button
+            onClick={handleAutoInvestToggle}
+            disabled={isExecuting}
+            className={`xl:hidden p-2.5 rounded-md transition-all ${
+              isAutoInvesting
+                ? "bg-primary-green/10 text-primary-green"
+                : "bg-gray-100 dark:bg-gray-800/50 text-gray-600 dark:text-gray-400"
+            } hover:scale-105 ${
+              isExecuting ? "opacity-50 cursor-not-allowed" : "cursor-pointer"
+            }`}
+            title={isAutoInvesting ? "Auto-Invest ON" : "Auto-Invest OFF"}
+          >
+            <Lightning
+              size={20}
+              weight={isAutoInvesting ? "fill" : "regular"}
+            />
+          </button>
         )}
 
         {/* Network Selector */}

@@ -15,6 +15,7 @@ import { usePortfolio } from "@/hooks/usePortfolio";
 import { useYieldData } from "@/hooks/useYieldData";
 import { useProtocolData } from "@/hooks/useProtocolData";
 import { useAIAgent } from "@/hooks/useAIAgent";
+import { useAutomation } from "@/hooks/useAutomation";
 import { Position } from "@/types/portfolio.types";
 import { YieldOpportunity } from "@/types/protocol.types";
 import { getProtocolLogo, getTokenLogo, getChainLogo } from "@/lib/utils/logos";
@@ -256,6 +257,7 @@ export default function DashboardPage() {
   const { getTokenPrice, ethPrice } = useProtocolData();
   const { executeAutomation, isExecuting, getPortfolioStats, getPositions } =
     useAIAgent();
+  const { clearPositions } = useAutomation();
 
   // Get USDC price for calculations
   const usdcPrice = getTokenPrice("USDC");
@@ -282,21 +284,38 @@ export default function DashboardPage() {
     }
   }, [vaultBalance]);
 
-  // Calculate real stats - use actual data from positions and vault balance
+  // Clear localStorage positions when vault balance is 0
+  useEffect(() => {
+    if (isConnected && vaultBalance === "0") {
+      clearPositions();
+      console.log("🧹 Cleared positions - vault balance is 0");
+    }
+  }, [isConnected, vaultBalance, clearPositions]);
+
+  // Calculate real stats - prioritize actual vault balance over localStorage
+  const actualVaultBalance = parseFloat(vaultBalance) || 0;
+
   const totalValue =
-    automationStats.totalValue > 0
+    actualVaultBalance > 0
+      ? actualVaultBalance
+      : automationStats.totalValue > 0
       ? automationStats.totalValue
-      : vaultBalance && parseFloat(vaultBalance) > 0
-      ? parseFloat(vaultBalance)
       : 0;
 
   const totalEarnings =
-    automationStats.totalEarnings > 0 ? automationStats.totalEarnings : 0;
+    actualVaultBalance > 0 && automationStats.totalEarnings > 0
+      ? automationStats.totalEarnings
+      : 0;
 
-  const avgApy = automationStats.avgApy > 0 ? automationStats.avgApy : 0;
+  const avgApy =
+    actualVaultBalance > 0 && automationStats.avgApy > 0
+      ? automationStats.avgApy
+      : 0;
 
   const activePositions =
-    automationStats.activePositions > 0 ? automationStats.activePositions : 0;
+    actualVaultBalance > 0 && automationStats.activePositions > 0
+      ? automationStats.activePositions
+      : 0;
 
   // Transform real yields data to match TopYieldCards format
   const realOpportunities: YieldOpportunity[] = (topYields || [])

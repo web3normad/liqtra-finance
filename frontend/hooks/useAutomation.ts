@@ -265,10 +265,22 @@ export function useAutomation() {
     };
   }, [getPositions]);
 
+  /**
+   * Clear all positions from localStorage (called after full withdrawal)
+   */
+  const clearPositions = useCallback(() => {
+    if (!address) return;
+    
+    const positionsKey = `positions_${address}_${chainId}`;
+    localStorage.removeItem(positionsKey);
+    console.log('🗑️ Cleared all positions from localStorage');
+  }, [address, chainId]);
+
   return {
     executeAutomation,
     getPositions,
     getPortfolioStats,
+    clearPositions,
     isExecuting,
     currentStep,
     isPending: isPending || isConfirming,

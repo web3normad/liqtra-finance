@@ -14,15 +14,19 @@ interface StatCardProps {
 
 function StatCard({ title, value, change, icon, iconBg }: StatCardProps) {
   return (
-    <Card className="flex items-center justify-between">
-      <div>
-        <p className="text-gray-600 dark:text-gray-400 text-sm mb-1">{title}</p>
-        <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-1">
+    <Card className="flex items-center justify-between p-4">
+      <div className="min-w-0 flex-1">
+        <p className="text-gray-600 dark:text-gray-400 text-xs lg:text-sm mb-1 truncate">
+          {title}
+        </p>
+        <h3 className="text-xl lg:text-2xl font-bold text-gray-900 dark:text-white mb-1 truncate">
           {value}
         </h3>
         {change !== undefined && <TrendIndicator value={change} size="sm" />}
       </div>
-      <div className={`${iconBg} p-4 rounded-md`}>{icon}</div>
+      <div className={`${iconBg} p-3 lg:p-4 rounded-md flex-shrink-0 ml-2`}>
+        {icon}
+      </div>
     </Card>
   );
 }
@@ -71,7 +75,9 @@ export function StatsOverview({
     {
       title: "Active Positions",
       value: activePositions.toString(),
-      icon: <Coins size={24} weight="fill" className="text-primary-green-light" />,
+      icon: (
+        <Coins size={24} weight="fill" className="text-primary-green-light" />
+      ),
       iconBg: "bg-primary-green-light/20",
     },
     {
@@ -83,7 +89,7 @@ export function StatsOverview({
   ];
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
       {stats.map((stat, index) => (
         <StatCard key={index} {...stat} />
       ))}

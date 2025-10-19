@@ -19,13 +19,19 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
       {/* Main Content Area */}
       <div
         className={`flex-1 flex flex-col bg-gray-50 dark:bg-background transition-all duration-300 ${
-          isChatbotOpen ? "lg:mr-96" : "mr-0"
+          isChatbotOpen ? "lg:mr-80" : "mr-0"
         }`}
       >
         <Header />
 
         <main className="flex-1 overflow-y-auto">
-          <div className="p-6 max-w-[1600px] mx-auto">{children}</div>
+          <div
+            className={`p-4 lg:p-6 transition-all duration-300 ${
+              isChatbotOpen ? "max-w-[1400px]" : "max-w-[1600px]"
+            } mx-auto`}
+          >
+            {children}
+          </div>
         </main>
       </div>
 

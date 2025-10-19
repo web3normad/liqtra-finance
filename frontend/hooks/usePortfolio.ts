@@ -11,11 +11,11 @@ export function usePortfolio() {
   const vaultAddress = getVaultAddress(chainId);
   const usdcAddress = getUSDCAddress(chainId);
 
-  // Get vault balance from smart contract
+  // Get vault balance from smart contract - FIXED: Use getUserBalance for consistency
   const { data: vaultBalance, isLoading: isLoadingVault, refetch: refetchVault } = useReadContract({
     address: vaultAddress,
     abi: VAULT_ABI,
-    functionName: 'balances',
+    functionName: 'getUserBalance',  // Changed from 'balances' to 'getUserBalance' for consistency
     args: address ? [address] : undefined,
     query: {
       enabled: !!address,

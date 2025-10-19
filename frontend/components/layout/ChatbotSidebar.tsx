@@ -67,8 +67,8 @@ export function ChatbotSidebar({
 
   return (
     <>
-      {/* Chatbot Container */}
-      <div className="fixed right-0 top-0 h-screen w-96 transition-all duration-300 ease-in-out z-40">
+      {/* Chatbot Container - Reduced width from w-96 to w-80 */}
+      <div className="fixed right-0 top-0 h-screen w-80 transition-all duration-300 ease-in-out z-40">
         <div className="h-full bg-white dark:bg-card border-l border-gray-200 dark:border-gray-700 shadow-2xl">
           <AIChatbot
             isOpen={!isCollapsed}

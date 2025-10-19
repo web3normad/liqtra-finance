@@ -13,24 +13,26 @@ export function CollapsibleSidebar() {
       {/* Sidebar */}
       <div
         className={`transition-all duration-300 ease-in-out ${
-          isCollapsed ? "w-0 -ml-64" : "w-64"
-        } relative`}
+          isCollapsed ? "w-0" : "w-64"
+        } overflow-hidden relative`}
       >
         <Sidebar />
-
-        {/* Toggle Button */}
-        <button
-          onClick={() => setIsCollapsed(!isCollapsed)}
-          className="absolute -right-3 top-6 z-50 w-6 h-6 bg-primary-green text-white rounded-full flex items-center justify-center shadow-lg hover:bg-primary-green-dark transition-colors"
-          title={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
-        >
-          {isCollapsed ? (
-            <CaretRight size={14} weight="bold" />
-          ) : (
-            <CaretLeft size={14} weight="bold" />
-          )}
-        </button>
       </div>
+
+      {/* Toggle Button - Always visible, aligned with content area */}
+      <button
+        onClick={() => setIsCollapsed(!isCollapsed)}
+        className={`fixed top-20 z-50 w-8 h-8 bg-primary-green text-white rounded-full flex items-center justify-center shadow-lg hover:bg-primary-green-dark transition-all ${
+          isCollapsed ? "left-3" : "left-[250px]"
+        }`}
+        title={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+      >
+        {isCollapsed ? (
+          <CaretRight size={16} weight="bold" />
+        ) : (
+          <CaretLeft size={16} weight="bold" />
+        )}
+      </button>
 
       {/* Overlay for mobile */}
       {!isCollapsed && (

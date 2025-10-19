@@ -27,7 +27,7 @@ function QuickActionButton({
 }: QuickActionProps) {
   return (
     <Card
-      className={`cursor-pointer hover:scale-[1.02] transition-transform ${
+      className={`cursor-pointer hover:scale-[1.02] transition-transform p-3 lg:p-4 ${
         gradient
           ? "bg-gradient-to-br from-primary-green/20 to-primary-green-light/20 border-primary-green/40"
           : ""
@@ -35,25 +35,25 @@ function QuickActionButton({
       onClick={onClick}
       hoverable
     >
-      <div className="flex items-start gap-4">
+      <div className="flex items-start gap-3">
         <div
           className={`${
             gradient
               ? "bg-gradient-to-br from-primary-green to-primary-green-light"
               : "bg-gray-100 dark:bg-gray-800"
-          } p-3 rounded-md`}
+          } p-2.5 lg:p-3 rounded-md flex-shrink-0`}
         >
           {icon}
         </div>
-        <div className="flex-1">
+        <div className="flex-1 min-w-0">
           <h3
-            className={`font-semibold mb-1 ${
+            className={`font-semibold text-sm lg:text-base mb-0.5 ${
               gradient ? "gradient-text" : "text-gray-900 dark:text-white"
             }`}
           >
             {title}
           </h3>
-          <p className="text-gray-600 dark:text-gray-400 text-sm">
+          <p className="text-gray-600 dark:text-gray-400 text-xs lg:text-sm">
             {description}
           </p>
         </div>
@@ -146,10 +146,10 @@ export function QuickActions({
 
   return (
     <div>
-      <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">
+      <h2 className="text-lg lg:text-xl font-bold text-gray-900 dark:text-white mb-4">
         Quick Actions
       </h2>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 lg:gap-4">
         {actions.map((action, index) => (
           <QuickActionButton key={index} {...action} />
         ))}
