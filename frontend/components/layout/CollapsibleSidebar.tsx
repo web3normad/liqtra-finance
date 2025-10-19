@@ -1,0 +1,44 @@
+// components/layout/CollapsibleSidebar.tsx
+"use client";
+
+import { useState } from "react";
+import { Sidebar } from "./Sidebar";
+import { CaretLeft, CaretRight } from "@phosphor-icons/react";
+
+export function CollapsibleSidebar() {
+  const [isCollapsed, setIsCollapsed] = useState(false);
+
+  return (
+    <>
+      {/* Sidebar */}
+      <div
+        className={`transition-all duration-300 ease-in-out ${
+          isCollapsed ? "w-0 -ml-64" : "w-64"
+        } relative`}
+      >
+        <Sidebar />
+
+        {/* Toggle Button */}
+        <button
+          onClick={() => setIsCollapsed(!isCollapsed)}
+          className="absolute -right-3 top-6 z-50 w-6 h-6 bg-primary-green text-white rounded-full flex items-center justify-center shadow-lg hover:bg-primary-green-dark transition-colors"
+          title={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+        >
+          {isCollapsed ? (
+            <CaretRight size={14} weight="bold" />
+          ) : (
+            <CaretLeft size={14} weight="bold" />
+          )}
+        </button>
+      </div>
+
+      {/* Overlay for mobile */}
+      {!isCollapsed && (
+        <div
+          className="fixed inset-0 bg-black/20 z-30 lg:hidden"
+          onClick={() => setIsCollapsed(true)}
+        />
+      )}
+    </>
+  );
+}

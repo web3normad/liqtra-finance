@@ -1,0 +1,102 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --font-jakarta: 'Plus Jakarta Sans', sans-serif;
+  --font-inter: 'Inter', sans-serif;
+}
+
+/* Light Mode Theme Variables */
+.light {
+  --bg-primary: #f5f7fa;
+  --bg-card: #ffffff;
+  --text-primary: #1a202c;
+  --text-secondary: #4a5568;
+}
+
+/* Dark Mode Theme Variables - VS Code inspired */
+.dark {
+  --bg-primary: #1e1e1e;
+  --bg-card: #252526;
+  --text-primary: #ffffff;
+  --text-secondary: #cbd5e0;
+}
+
+@layer base {
+  * {
+    @apply border-gray-200 dark:border-gray-800;
+  }
+  
+  body {
+    @apply bg-background-light dark:bg-background text-gray-900 dark:text-white;
+  }
+
+  /* Custom Scrollbar - Dark */
+  .dark ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  .dark ::-webkit-scrollbar-track {
+    @apply bg-gray-900;
+  }
+
+  .dark ::-webkit-scrollbar-thumb {
+    @apply bg-gray-700 rounded-full;
+  }
+
+  .dark ::-webkit-scrollbar-thumb:hover {
+    @apply bg-gray-600;
+  }
+
+  /* Custom Scrollbar - Light */
+  :not(.dark) ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  :not(.dark) ::-webkit-scrollbar-track {
+    @apply bg-gray-200;
+  }
+
+  :not(.dark) ::-webkit-scrollbar-thumb {
+    @apply bg-gray-400 rounded-full;
+  }
+
+  :not(.dark) ::-webkit-scrollbar-thumb:hover {
+    @apply bg-gray-500;
+  }
+}
+
+@layer utilities {
+  /* Gradient Text */
+  .gradient-text {
+    @apply bg-gradient-to-r from-primary-green to-primary-green-light bg-clip-text text-transparent;
+  }
+
+  /* Glass Effect */
+  .glass {
+    @apply bg-gray-800/30 backdrop-blur-xl border border-gray-700/50;
+  }
+
+  /* Glow Effect */
+  .glow {
+    box-shadow: 0 0 20px rgba(0, 158, 96, 0.3);
+  }
+
+  .glow-green {
+    box-shadow: 0 0 20px rgba(0, 158, 96, 0.4);
+  }
+
+  /* Hide Scrollbar */
+  .scrollbar-hide {
+    -ms-overflow-style: none;  /* IE and Edge */
+    scrollbar-width: none;  /* Firefox */
+  }
+
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;  /* Chrome, Safari and Opera */
+  }
+}
+
